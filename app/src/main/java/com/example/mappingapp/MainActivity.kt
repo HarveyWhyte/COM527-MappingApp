@@ -14,12 +14,15 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -51,51 +54,62 @@ class MainActivity : ComponentActivity(), LocationListener {
                     latLngState.value = it
                 }
 
-                GPSDisplayer(latLngState.value)
+                Column{
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Row{
+                        TextField(
+                            modifier = Modifier.weight(2.0f),
+                            value = latLngState.value.latitude.toString(),
+                            onValueChange={ latLngState.value.latitude = it.toDouble() },
+                            label={ Text("Enter Latitude:") }
+                        )
+                        TextField(
+                            modifier = Modifier.weight(2.0f),
+                            value = latLngState.value.longitude.toString(), //change
+                            onValueChange={ latLngState.value.longitude = it.toDouble() }, //change
+                            label={ Text("Enter Longitude:") }
+                        )
+                        Button(modifier = Modifier.weight(1.0f).padding(8.dp),
+                            onClick = { latLngState.value =  //temp langstate where change comments are}
+                        ){
+                            Text("Clear")
+                        }
+                    }
+                    MapLibre(
+                        modifier=Modifier.fillMaxSize(),
+                        styleBuilder = styleBuilder,
+                        cameraPosition = CameraPosition(
+                            target  = latLngState.value,
+                            zoom = 14.0
+                        )
+                    ){
+                        Circle(center = latLngState.value,
+                            radius = 100.0f,
+                            opacity = 0.5f
+                        )
 
-                MapLibre(
-                    modifier=Modifier.fillMaxSize(),
-                    styleBuilder = styleBuilder,
-                    cameraPosition = CameraPosition(
-                        target  = latLngState.value,
-                        zoom = 14.0
-                    )
-                ){
-                    Circle(center = latLngState.value,
-                        radius = 100.0f,
-                        opacity = 0.5f
-                    )
+                        Polyline(
+                            points = listOf(
+                                latLngState.value,
+                                LatLng(latLngState.value.latitude - 0.001, latLngState.value.longitude - 0.003),
+                            ),
+                            color = "#0000ff",
+                            lineWidth = 3.0f
+                        )
 
-                    Polyline(
-                        points = listOf(
-                            latLngState.value,
-                            LatLng(latLngState.value.latitude - 0.001, latLngState.value.longitude - 0.003),
-                        ),
-                        color = "#0000ff",
-                        lineWidth = 3.0f
-                    )
-
-                    Polygon(
-                        vertices = listOf(
-                            LatLng(latLngState.value.latitude - 0.003, latLngState.value.longitude),
-                            LatLng(latLngState.value.latitude - 0.004, latLngState.value.longitude - 0.003),
-                            LatLng(latLngState.value.latitude - 0.005, latLngState.value.longitude + 0.003)
-                        ),
-                        fillColor = "#ff0000",
-                        opacity = 0.3f,
-                        borderColor = "#ff0000"
-                    )
+                        Polygon(
+                            vertices = listOf(
+                                LatLng(latLngState.value.latitude - 0.003, latLngState.value.longitude),
+                                LatLng(latLngState.value.latitude - 0.004, latLngState.value.longitude - 0.003),
+                                LatLng(latLngState.value.latitude - 0.005, latLngState.value.longitude + 0.003)
+                            ),
+                            fillColor = "#ff0000",
+                            opacity = 0.3f,
+                            borderColor = "#ff0000"
+                        )
+                    }
                 }
             }
-        }
-    }
-
-    @Composable
-    fun GPSDisplayer(latLng: LatLng){
-        Column {
-            Spacer(modifier = Modifier.height(16.dp))
-            Text("Latitude: ${latLng.latitude}")
-            Text("Longitude: ${latLng.longitude}")
         }
     }
 
