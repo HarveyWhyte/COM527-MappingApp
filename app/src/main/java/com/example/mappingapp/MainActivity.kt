@@ -27,13 +27,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.mappingapp.ui.theme.MappingAppTheme
+import org.maplibre.android.geometry.LatLng
+import org.maplibre.android.maps.Style
+import org.ramani.compose.CameraPosition
+import org.ramani.compose.Circle
+import org.ramani.compose.MapLibre
+import org.ramani.compose.Polygon
+import org.ramani.compose.Polyline
 
-
-data class LatLng(val latitude: Double, val longitude: Double)
 
 class MainActivity : ComponentActivity(), LocationListener {
 
     val latLngViewModel : LatLngViewModel by viewModels()
+    var styleBuilder = Style.Builder().fromUri("https://tiles.openfreemap.org/styles/bright")
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -46,6 +52,40 @@ class MainActivity : ComponentActivity(), LocationListener {
                 }
 
                 GPSDisplayer(latLngState.value)
+
+                MapLibre(
+                    modifier=Modifier.fillMaxSize(),
+                    styleBuilder = styleBuilder,
+                    cameraPosition = CameraPosition(
+                        target  = latLngState.value,
+                        zoom = 14.0
+                    )
+                ){
+                    Circle(center = latLngState.value,
+                        radius = 100.0f,
+                        opacity = 0.5f
+                    )
+
+                    Polyline(
+                        points = listOf(
+                            latLngState.value,
+                            LatLng(latLngState.value.latitude - 0.001, latLngState.value.longitude - 0.003),
+                        ),
+                        color = "#0000ff",
+                        lineWidth = 3.0f
+                    )
+
+                    Polygon(
+                        vertices = listOf(
+                            LatLng(latLngState.value.latitude - 0.003, latLngState.value.longitude),
+                            LatLng(latLngState.value.latitude - 0.004, latLngState.value.longitude - 0.003),
+                            LatLng(latLngState.value.latitude - 0.005, latLngState.value.longitude + 0.003)
+                        ),
+                        fillColor = "#ff0000",
+                        opacity = 0.3f,
+                        borderColor = "#ff0000"
+                    )
+                }
             }
         }
     }
