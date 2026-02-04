@@ -13,7 +13,10 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -22,6 +25,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import com.example.mappingapp.ui.theme.MappingAppTheme
 
 
@@ -41,14 +45,18 @@ class MainActivity : ComponentActivity(), LocationListener {
                     latLngState.value = it
                 }
 
-                GPSDisplayer(latLngState.value) // imagine GPSDisplayer is our own composable
+                GPSDisplayer(latLngState.value)
             }
         }
     }
 
     @Composable
     fun GPSDisplayer(latLng: LatLng){
-        Text("Lat: ${latLng.latitude}, Long: ${latLng.longitude}")
+        Column {
+            Spacer(modifier = Modifier.height(16.dp))
+            Text("Latitude: ${latLng.latitude}")
+            Text("Longitude: ${latLng.longitude}")
+        }
     }
 
     //Checks whether the GPS Permission has been granted
@@ -76,7 +84,7 @@ class MainActivity : ComponentActivity(), LocationListener {
     fun startGPS(){
         //start listening for GPS updates
         val mgr = getSystemService(LOCATION_SERVICE) as LocationManager
-        mgr.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0f, this )
+        mgr.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000, 10f, this )
     }
 
     // Compulsory - provide onLocationChanged() method which runs whenever
@@ -89,7 +97,6 @@ class MainActivity : ComponentActivity(), LocationListener {
     // Optional - runs when the user enables the GPS
     override fun onProviderEnabled(provider: String) {
         Toast.makeText(this, "GPS enabled", Toast.LENGTH_LONG).show()
-
     }
 
     // Optional - runs when the user disables the GPS
