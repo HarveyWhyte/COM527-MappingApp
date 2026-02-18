@@ -10,6 +10,7 @@ activityCompose = "1.8.0"
 composeBom = "2024.09.00"
 ramaniMaps = "0.10.0"
 maplibreVulkan = "11.11.0"
+navigationCompose = "2.9.7"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -28,6 +29,7 @@ androidx-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit
 androidx-material3 = { group = "androidx.compose.material3", name = "material3" }
 ramani-maps = { group = "org.ramani-maps", name = "ramani-maplibre", version.ref = "ramaniMaps" }
 maplibre-vulkan = { group = "org.maplibre.gl", name = "andoid-sdk-vulkan", version.ref = "maplibreVulkan" }
+navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigationCompose" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

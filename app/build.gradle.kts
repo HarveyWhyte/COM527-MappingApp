@@ -54,6 +54,7 @@ dependencies {
     //implementation(libs.ramani.maps) {
     //    exclude(group = "org.maplibre.gl", module = "android-sdk")
     //}
+    implementation(libs.navigation.compose)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

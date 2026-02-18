@@ -13,10 +13,12 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
@@ -26,6 +28,7 @@ import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -37,7 +40,9 @@ import org.ramani.compose.Circle
 import org.ramani.compose.MapLibre
 import org.ramani.compose.Polygon
 import org.ramani.compose.Polyline
-
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
 
 class MainActivity : ComponentActivity(), LocationListener {
 
@@ -48,67 +53,100 @@ class MainActivity : ComponentActivity(), LocationListener {
         super.onCreate(savedInstanceState)
         checkPermissions()
         setContent {
+            val navController = rememberNavController()
             MappingAppTheme {
+//                Row(modifier = Modifier.fillMaxWidth()){
+//                    Button(modifier = Modifier.weight(1.0f), onClick = {
+//                        navController.navigate("settings")
+//                    }){
+//                        Text("Settings")
+//                    }
+//                }
+//                NavHost(navController = navController, startDestination = "settingsScreen"){
+//                    composable("Settings"){
+//                        SettingsComposable{
+//                            //go back
+//                        }
+//                    }
+//                }
                 val latLngState = remember { mutableStateOf(LatLng(0.0, 0.0)) }
+                val latitudeInput =
+                    remember { mutableStateOf(latLngState.value.latitude.toString()) }
+                val longitudeInput =
+                    remember { mutableStateOf(latLngState.value.latitude.toString()) }
+
+
                 latLngViewModel.latLngLiveData.observe(this) {
                     latLngState.value = it
+                    latitudeInput.value = it.latitude.toString()
+                    longitudeInput.value = it.longitude.toString()
+                }
+
+                BoxWithConstraints(modifier = Modifier.fillMaxSize()) box@{
+                    MapLibre(
+                        modifier = Modifier.align(Alignment.TopCenter).height(this.maxHeight - 100.dp),
+                        styleBuilder = styleBuilder,
+                        cameraPosition = CameraPosition(
+                            target = latLngState.value,
+                            zoom = 14.0
+                        )
+                    ) {
+                        Circle(
+                            center = latLngState.value,
+                            radius = 100.0f,
+                            opacity = 0.5f
+                        )
+                    }
+                    Row(modifier = Modifier.align(Alignment.BottomCenter).height(100.dp)) {
+                        TextField(
+                            modifier = Modifier.weight(2f),
+                            value = latitudeInput.value,
+                            onValueChange = { latitudeInput.value = it },
+                            label = { Text("Latitude:") },
+                            singleLine = true
+                        )
+
+                        TextField(
+                            modifier = Modifier.weight(2f),
+                            value = longitudeInput.value,
+                            onValueChange = { longitudeInput.value = it },
+                            label = { Text("Longitude:") },
+                            singleLine = true
+                        )
+
+                        Button(
+                            modifier = Modifier
+                                .weight(1.8f)
+                                .padding(8.dp),
+                            onClick = {
+                                val lat = latitudeInput.value.toDoubleOrNull()
+                                val lng = longitudeInput.value.toDoubleOrNull()
+
+                                if (lat != null && lng != null) {
+                                    latLngState.value = LatLng(lat, lng)
+                                }
+                            }
+                        ) {
+                            Text("Update")
+                        }
+                    }
                 }
 
                 Column{
                     Spacer(modifier = Modifier.height(16.dp))
-                    Row{
-                        TextField(
-                            modifier = Modifier.weight(2.0f),
-                            value = latLngState.value.latitude.toString(),
-                            onValueChange={ latLngState.value.latitude = it.toDouble() },
-                            label={ Text("Enter Latitude:") }
-                        )
-                        TextField(
-                            modifier = Modifier.weight(2.0f),
-                            value = latLngState.value.longitude.toString(), //change
-                            onValueChange={ latLngState.value.longitude = it.toDouble() }, //change
-                            label={ Text("Enter Longitude:") }
-                        )
-                        Button(modifier = Modifier.weight(1.0f).padding(8.dp),
-                            onClick = { latLngState.value =  //temp langstate where change comments are}
-                        ){
-                            Text("Clear")
-                        }
-                    }
-                    MapLibre(
-                        modifier=Modifier.fillMaxSize(),
-                        styleBuilder = styleBuilder,
-                        cameraPosition = CameraPosition(
-                            target  = latLngState.value,
-                            zoom = 14.0
-                        )
-                    ){
-                        Circle(center = latLngState.value,
-                            radius = 100.0f,
-                            opacity = 0.5f
-                        )
 
-                        Polyline(
-                            points = listOf(
-                                latLngState.value,
-                                LatLng(latLngState.value.latitude - 0.001, latLngState.value.longitude - 0.003),
-                            ),
-                            color = "#0000ff",
-                            lineWidth = 3.0f
-                        )
 
-                        Polygon(
-                            vertices = listOf(
-                                LatLng(latLngState.value.latitude - 0.003, latLngState.value.longitude),
-                                LatLng(latLngState.value.latitude - 0.004, latLngState.value.longitude - 0.003),
-                                LatLng(latLngState.value.latitude - 0.005, latLngState.value.longitude + 0.003)
-                            ),
-                            fillColor = "#ff0000",
-                            opacity = 0.3f,
-                            borderColor = "#ff0000"
-                        )
-                    }
                 }
+            }
+        }
+    }
+
+    @Composable
+    fun SettingsComposable(onSettingsAltered: () -> Unit){
+        Column{
+            Text("Settings")
+            Button(onClick = { onSettingsAltered() }){
+                Text("Alter Settings")
             }
         }
     }
@@ -138,6 +176,10 @@ class MainActivity : ComponentActivity(), LocationListener {
     fun startGPS(){
         //start listening for GPS updates
         val mgr = getSystemService(LOCATION_SERVICE) as LocationManager
+        val lastLocation = mgr.getLastKnownLocation(LocationManager.GPS_PROVIDER)
+        lastLocation?.let {
+            latLngViewModel.latLng = LatLng(it.latitude, it.longitude)
+        }
         mgr.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000, 10f, this )
     }
 
