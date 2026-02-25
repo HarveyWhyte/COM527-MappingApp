@@ -85,6 +85,7 @@ class MainActivity : ComponentActivity(), LocationListener {
     val latLngViewModel : LatLngViewModel by viewModels()
     var styleBuilder = Style.Builder().fromUri("https://tiles.openfreemap.org/styles/bright")
 
+    @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -98,7 +99,62 @@ class MainActivity : ComponentActivity(), LocationListener {
                     latLngState = it
                 }
 
+                val coroutineScope = rememberCoroutineScope()
+                val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+
+                ModalNavigationDrawer(drawerState = drawerState,
+                    drawerContent = {
+                        ModalDrawerSheet(){
+                            NavigationDrawerItem(
+                                selected = false,
+                                label = { Text("Settings") },
+                                onClick = {
+                                    coroutineScope.launch {
+                                        drawerState.close()
+                                    }
+                                    navController.navigate("settingsScreen")
+                                }
+                            )
+                        }
+                    }
+                ) {
+                    NavHost(navController = navController, startDestination = "mapScreen"){
+                        composable("settingsScreen"){
+                            SettingsScreenComposable(latLngState, zoomState){ latLng, zoom ->
+                                latLngViewModel.latLngLiveData.value = latLng
+                                zoomState = zoom
+                                navController.popBackStack()
+                            }
+                        }
+                        composable("mapScreen") {
+                            MapScreenComposable(latLngState, zoomState)
+                        }
+                    }
+                }
+
                 Scaffold(
+                    topBar = {
+                        TopAppBar(
+                            colors = TopAppBarDefaults.topAppBarColors(
+                                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                titleContentColor = MaterialTheme.colorScheme.primary
+                            ),
+                            actions = {
+                                IconButton(onClick = {
+                                    coroutineScope.launch {
+                                        if(drawerState.isClosed) {
+                                            drawerState.open()
+                                        } else {
+                                            drawerState.close()
+                                        }
+                                    }
+                                }) {
+                                    Icon(imageVector = Icons.Filled.Menu, "Menu")
+                                }
+                            },
+                            title = { Text("Map App") }
+                        )
+                    },
                     bottomBar = {
                         NavigationBar(modifier = Modifier.height(100.dp)) {
                             NavigationBarItem(
