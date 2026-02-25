@@ -14,6 +14,8 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -28,8 +30,11 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -46,6 +51,34 @@ import org.ramani.compose.Polyline
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.DrawerState
+import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalDrawerSheet
+import androidx.compose.material3.ModalNavigationDrawer
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationDrawerItem
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberDrawerState
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity(), LocationListener {
 
@@ -54,30 +87,47 @@ class MainActivity : ComponentActivity(), LocationListener {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
         checkPermissions()
         setContent {
             val navController = rememberNavController()
             MappingAppTheme {
-                Row(modifier = Modifier.fillMaxWidth()){
-                    Button(modifier = Modifier.weight(1.0f), onClick = {
-                        navController.navigate("settingsScreen")
-                    }){
-                        Text("Settings")
-                    }
-                    Button(modifier = Modifier.weight(1.0f), onClick = {
-                        navController.navigate("mapScreen")
-                    }){
-                        Text("Map")
-                    }
+                var latLngState by remember { mutableStateOf(LatLng(0.0, 0.0)) }
+                var zoomState by remember { mutableDoubleStateOf(14.0) }
+                latLngViewModel.latLngLiveData.observe(this) {
+                    latLngState = it
                 }
-                NavHost(navController = navController, startDestination = "mapScreen"){
-                    composable("settingsScreen"){
-                        SettingsScreenComposable{
-                            //go back
+
+                Scaffold(
+                    bottomBar = {
+                        NavigationBar(modifier = Modifier.height(100.dp)) {
+                            NavigationBarItem(
+                                icon = { Icon(Icons.Filled.Home, "Home") },
+                                label = { Text("Map") },
+                                onClick = { navController.navigate("mapScreen") },
+                                selected = false
+                            )
+
+                            NavigationBarItem(
+                                icon = { Icon(Icons.Filled.Settings, "Settings") },
+                                label = { Text("Settings") },
+                                onClick = { navController.navigate("settingsScreen") },
+                                selected = false
+                            )
                         }
                     }
-                    composable("mapScreen") {
-                        MapScreenComposable()
+                ) { innerPadding ->
+                    NavHost(modifier = Modifier.padding(innerPadding), navController = navController, startDestination = "mapScreen"){
+                        composable("settingsScreen"){
+                            SettingsScreenComposable(latLngState, zoomState){ latLng, zoom ->
+                                latLngViewModel.latLngLiveData.value = latLng
+                                zoomState = zoom
+                                navController.popBackStack()
+                            }
+                        }
+                        composable("mapScreen") {
+                            MapScreenComposable(latLngState, zoomState)
+                        }
                     }
                 }
             }
@@ -85,76 +135,72 @@ class MainActivity : ComponentActivity(), LocationListener {
     }
 
     @Composable
-    fun SettingsScreenComposable(onSettingsAltered: () -> Unit){
-        Column{
-            Text("Settings")
-            Button(onClick = { onSettingsAltered() }){
-                Text("Alter Settings")
-            }
-        }
-    }
+    fun SettingsScreenComposable(latLngState: LatLng, zoomState: Double, onSettingsAltered: (LatLng, Double) -> Unit){
+        var updatedLatLngState by remember { mutableStateOf(latLngState) }
+        var updatedZoomState by remember { mutableDoubleStateOf(zoomState) }
 
-    @Composable
-    fun MapScreenComposable(){
-        val latLngState = remember { mutableStateOf(LatLng(0.0, 0.0)) } //make these by remember
-        val latitudeInput = remember { mutableStateOf("") }
-        val longitudeInput = remember { mutableStateOf("") }
+        var latitudeInput by remember { mutableStateOf(latLngState.latitude.toString()) }
+        var longitudeInput by remember { mutableStateOf(latLngState.longitude.toString()) }
+        var zoomInput by remember { mutableStateOf(zoomState.toString()) }
 
-        latLngViewModel.latLngLiveData.observe(this) {
-            latLngState.value = it
-            latitudeInput.value = it.latitude.toString()
-            longitudeInput.value = it.longitude.toString()
-        }
-
-        BoxWithConstraints(modifier = Modifier.fillMaxSize()) box@{
-            MapLibre(
-                modifier = Modifier.align(Alignment.TopCenter).height(this.maxHeight - 100.dp).offset(y = 50.dp),
-                styleBuilder = styleBuilder,
-                cameraPosition = CameraPosition(
-                    target = latLngState.value,
-                    zoom = 14.0
-                )
-            ) {
-                Circle(
-                    center = latLngState.value,
-                    radius = 100.0f,
-                    opacity = 0.5f
-                )
-            }
-            Row(modifier = Modifier.align(Alignment.BottomCenter).height(100.dp).background(color = Color.White)) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center){
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+            ){
                 TextField(
-                    modifier = Modifier.weight(2f),
-                    value = latitudeInput.value,
-                    onValueChange = { latitudeInput.value = it },
+                    value = latitudeInput,
+                    onValueChange = { latitudeInput = it },
                     label = { Text("Latitude:") },
                     singleLine = true
                 )
 
                 TextField(
-                    modifier = Modifier.weight(2f),
-                    value = longitudeInput.value,
-                    onValueChange = { longitudeInput.value = it },
+                    value = longitudeInput,
+                    onValueChange = { longitudeInput = it },
                     label = { Text("Longitude:") },
                     singleLine = true
                 )
 
+                TextField(
+                    value = zoomInput,
+                    onValueChange = { zoomInput = it },
+                    label = { Text("Zoom:") },
+                    singleLine = true
+                )
+
                 Button(
-                    modifier = Modifier
-                        .weight(1.8f)
-                        .padding(8.dp),
                     onClick = {
-                        val lat = latitudeInput.value.toDoubleOrNull()
-                        val lng = longitudeInput.value.toDoubleOrNull()
+                        val lat = latitudeInput.toDoubleOrNull()
+                        val lng = longitudeInput.toDoubleOrNull()
+                        val zoom = zoomInput.toDoubleOrNull()
 
                         if (lat != null && lng != null) {
-                            latLngState.value = LatLng(lat, lng)
+                            updatedLatLngState = LatLng(lat, lng)
                         }
+                        if (zoom != null){
+                            updatedZoomState = zoom
+                        }
+                        onSettingsAltered(updatedLatLngState, updatedZoomState)
                     }
                 ) {
                     Text("Update")
                 }
             }
         }
+    }
+
+    @Composable
+    fun MapScreenComposable(latLngState: LatLng, zoomState: Double){
+        MapLibre(
+            modifier = Modifier,
+            styleBuilder = styleBuilder,
+            cameraPosition = CameraPosition(
+                target = latLngState,
+                zoom = zoomState
+            )
+        )
     }
 
     //Checks whether the GPS Permission has been granted
