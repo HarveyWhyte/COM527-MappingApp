@@ -102,36 +102,6 @@ class MainActivity : ComponentActivity(), LocationListener {
                 val coroutineScope = rememberCoroutineScope()
                 val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
 
-                ModalNavigationDrawer(drawerState = drawerState,
-                    drawerContent = {
-                        ModalDrawerSheet(){
-                            NavigationDrawerItem(
-                                selected = false,
-                                label = { Text("Settings") },
-                                onClick = {
-                                    coroutineScope.launch {
-                                        drawerState.close()
-                                    }
-                                    navController.navigate("settingsScreen")
-                                }
-                            )
-                        }
-                    }
-                ) {
-                    NavHost(navController = navController, startDestination = "mapScreen"){
-                        composable("settingsScreen"){
-                            SettingsScreenComposable(latLngState, zoomState){ latLng, zoom ->
-                                latLngViewModel.latLngLiveData.value = latLng
-                                zoomState = zoom
-                                navController.popBackStack()
-                            }
-                        }
-                        composable("mapScreen") {
-                            MapScreenComposable(latLngState, zoomState)
-                        }
-                    }
-                }
-
                 Scaffold(
                     topBar = {
                         TopAppBar(
@@ -158,14 +128,18 @@ class MainActivity : ComponentActivity(), LocationListener {
                     bottomBar = {
                         NavigationBar(modifier = Modifier.height(100.dp)) {
                             NavigationBarItem(
-                                icon = { Icon(Icons.Filled.Home, "Home") },
+                                icon = { Icon(
+                                    painter = painterResource(R.drawable.map_image),
+                                    contentDescription = "Map",
+                                    tint = MaterialTheme.colorScheme.primary
+                                ) },
                                 label = { Text("Map") },
                                 onClick = { navController.navigate("mapScreen") },
                                 selected = false
                             )
 
                             NavigationBarItem(
-                                icon = { Icon(Icons.Filled.Settings, "Settings") },
+                                icon = { Icon(Icons.Filled.Settings, "Settings", tint = MaterialTheme.colorScheme.primary) },
                                 label = { Text("Settings") },
                                 onClick = { navController.navigate("settingsScreen") },
                                 selected = false
@@ -173,16 +147,43 @@ class MainActivity : ComponentActivity(), LocationListener {
                         }
                     }
                 ) { innerPadding ->
-                    NavHost(modifier = Modifier.padding(innerPadding), navController = navController, startDestination = "mapScreen"){
-                        composable("settingsScreen"){
-                            SettingsScreenComposable(latLngState, zoomState){ latLng, zoom ->
-                                latLngViewModel.latLngLiveData.value = latLng
-                                zoomState = zoom
-                                navController.popBackStack()
+                    ModalNavigationDrawer(modifier = Modifier.padding(innerPadding),drawerState = drawerState,
+                        drawerContent = {
+                            ModalDrawerSheet(){
+                                NavigationDrawerItem(
+                                    selected = false,
+                                    label = { Text("Settings") },
+                                    onClick = {
+                                        coroutineScope.launch {
+                                            drawerState.close()
+                                        }
+                                        navController.navigate("settingsScreen")
+                                    }
+                                )
+                                NavigationDrawerItem(
+                                    selected = false,
+                                    label = { Text("Map") },
+                                    onClick = {
+                                        coroutineScope.launch {
+                                            drawerState.close()
+                                        }
+                                        navController.navigate("mapScreen")
+                                    }
+                                )
                             }
                         }
-                        composable("mapScreen") {
-                            MapScreenComposable(latLngState, zoomState)
+                    ) {
+                        NavHost( navController = navController, startDestination = "mapScreen"){
+                            composable("settingsScreen"){
+                                SettingsScreenComposable(latLngState, zoomState){ latLng, zoom ->
+                                    latLngViewModel.latLngLiveData.value = latLng
+                                    zoomState = zoom
+                                    navController.popBackStack()
+                                }
+                            }
+                            composable("mapScreen") {
+                                MapScreenComposable(latLngState, zoomState)
+                            }
                         }
                     }
                 }
