@@ -2,6 +2,9 @@ package com.example.mappingapp
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.content.pm.PackageManager
 import android.location.Location
 import android.location.LocationListener
@@ -13,56 +16,20 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableDoubleStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
-import com.example.mappingapp.ui.theme.MappingAppTheme
-import org.maplibre.android.geometry.LatLng
-import org.maplibre.android.maps.Style
-import org.ramani.compose.CameraPosition
-import org.ramani.compose.Circle
-import org.ramani.compose.MapLibre
-import org.ramani.compose.Polygon
-import org.ramani.compose.Polyline
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
-import androidx.navigation.compose.rememberNavController
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.DrawerState
+import androidx.compose.material3.Button
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -72,24 +39,47 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDrawerState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableDoubleStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.unit.dp
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import com.example.mappingapp.ui.theme.MappingAppTheme
 import kotlinx.coroutines.launch
+import org.maplibre.android.geometry.LatLng
+import org.maplibre.android.maps.Style
+import org.ramani.compose.CameraPosition
+import org.ramani.compose.Circle
+import org.ramani.compose.MapLibre
 
 class MainActivity : ComponentActivity(), LocationListener {
 
     val latLngViewModel : LatLngViewModel by viewModels()
     var styleBuilder = Style.Builder().fromUri("https://tiles.openfreemap.org/styles/bright")
 
+
+    val channelID = "LOCATION_CHANNEL"
+    lateinit var nMgr : NotificationManager
+    var uniqueId = 0
+
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        nMgr = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         enableEdgeToEdge()
         checkPermissions()
         setContent {
@@ -317,21 +307,30 @@ class MainActivity : ComponentActivity(), LocationListener {
     //Checks whether the GPS Permission has been granted
     //If it has, start the GPS
     //Else, request permission from the user
+    @SuppressLint("WrongConstant")
     fun checkPermissions(){
-        val requiredPermission = Manifest.permission.ACCESS_FINE_LOCATION
+        val requiredPermissions = arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.POST_NOTIFICATIONS)
 
-        if(checkSelfPermission(requiredPermission) == PackageManager.PERMISSION_GRANTED) {
-                startGPS()
-            } else{
-            val permissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
-                if(isGranted) {
-                    startGPS() // A function to start the GPS - see below
-                } else {
-                    // Permission not granted
-                    Toast.makeText(this, "GPS permission not granted", Toast.LENGTH_LONG).show()
+        if (requiredPermissions.any { checkSelfPermission(it) != PackageManager.PERMISSION_GRANTED }) {
+            val launcher = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { isGranted ->
+
+                // With multiple permissions, isGranted is a map and we use the
+                // specific permission as a key (index) to test if that specific
+                // permission has been granted
+                if(isGranted[Manifest.permission.ACCESS_FINE_LOCATION] == true) {
+                    startGPS()
+                } else{
+                    Toast.makeText(this, "GPS permission not  granted", Toast.LENGTH_LONG).show()
+                }
+
+                if(isGranted[Manifest.permission.POST_NOTIFICATIONS] == true) {
+                    startNotification()
                 }
             }
-            permissionLauncher.launch(requiredPermission)
+            // Launch the launcher with the array of requested permissions
+            launcher.launch(requiredPermissions)
+        } else {
+            startGPS()
         }
     }
 
@@ -343,7 +342,13 @@ class MainActivity : ComponentActivity(), LocationListener {
         lastLocation?.let {
             latLngViewModel.latLng = LatLng(it.latitude, it.longitude)
         }
-        mgr.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 5f, this )
+        mgr.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000, 5f, this)
+    }
+
+    @SuppressLint("MissingPermission")
+    fun startNotification(){
+        val channel = NotificationChannel(channelID, "Location notifications", NotificationManager.IMPORTANCE_DEFAULT)
+        nMgr.createNotificationChannel(channel)
     }
 
     // Compulsory - provide onLocationChanged() method which runs whenever
@@ -351,6 +356,13 @@ class MainActivity : ComponentActivity(), LocationListener {
     override fun onLocationChanged(location: Location) {
         Toast.makeText(this, "Latitude: ${location.latitude}, Longitude: ${location.longitude}", Toast.LENGTH_SHORT).show()
         latLngViewModel.latLng = LatLng(location.latitude, location.longitude)
+        val notification = Notification.Builder(this, channelID)
+            .setContentTitle("Location update")
+            .setContentText("Location is now ${latLngViewModel.latLng}")
+            .setSmallIcon(R.drawable.map_image)
+            .build()
+        nMgr.notify(uniqueId, notification)
+        uniqueId++
     }
 
     // Optional - runs when the user enables the GPS
