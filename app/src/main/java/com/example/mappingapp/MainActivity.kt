@@ -58,6 +58,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DrawerState
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -78,6 +79,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.window.Dialog
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity(), LocationListener {
@@ -248,6 +250,7 @@ class MainActivity : ComponentActivity(), LocationListener {
         }
     }
 
+    @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     fun MapScreenComposable(latLngState: LatLng, zoomState: Double){
         MapLibre(
@@ -257,7 +260,58 @@ class MainActivity : ComponentActivity(), LocationListener {
                 target = latLngState,
                 zoom = zoomState
             )
-        )
+        ){
+            var currentLocationDialogVisible by remember { mutableStateOf(false) }
+            Circle(
+                center = latLngState,
+                radius = 6.0f,
+                opacity = 1.0f,
+                color = "Blue",
+                onClick = {
+                    currentLocationDialogVisible = true
+                }
+            )
+            if (currentLocationDialogVisible){
+//                Dialog(
+//                    onDismissRequest = {
+//                        currentLocationDialogVisible = false
+//                    }
+//                ) {
+//                    Column(
+//                        modifier = Modifier
+//                            .background(color = MaterialTheme.colorScheme.background)
+//                            .padding(10.dp)
+//                    ) {
+//                        Text("This marker represents your current location")
+//                        Button(onClick = {
+//                            currentLocationDialogVisible = false
+//                        }) {
+//                            Text("Dismiss")
+//                        }
+//                    }
+//                }
+                AlertDialog(
+                    icon = {},
+                    title = {},
+                    text = {
+                        Text(
+                            "This marker represents your current location"
+                        )
+                    },
+                    onDismissRequest = {
+                        currentLocationDialogVisible = false
+                    },
+                    dismissButton = {
+                        Button(onClick = {
+                            currentLocationDialogVisible = false
+                        }) {
+                            Text("Dismiss")
+                        }
+                    },
+                    confirmButton = {}
+                )
+            }
+        }
     }
 
     //Checks whether the GPS Permission has been granted
@@ -289,7 +343,7 @@ class MainActivity : ComponentActivity(), LocationListener {
         lastLocation?.let {
             latLngViewModel.latLng = LatLng(it.latitude, it.longitude)
         }
-        mgr.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000, 10f, this )
+        mgr.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 5f, this )
     }
 
     // Compulsory - provide onLocationChanged() method which runs whenever
